@@ -113,12 +113,15 @@ jobs:
             const repo = context.repo.repo;
             const pr = context.payload.pull_request.number;
 
-            const { data: files } = await github.rest.pulls.listFiles({
-              owner,
-              repo,
-              pull_number: pr,
-              per_page: 100
-            });
+            const files = await github.paginate(
+              github.rest.pulls.listFiles,
+              {
+                owner,
+                repo,
+                pull_number: pr,
+                per_page: 100
+              }
+            );
 
             let suspiciousScore = 0;
             const reasons = [];
@@ -138,8 +141,12 @@ jobs:
               }
 
               // Huge comment density
-              const commentLines =
-                (patch.match(/\/\/|\/\*|\*/g) || []).length;
+               const addedLines = 
+                patch.split('\n').filter(line => line.startsWith('+'));
+              
+              const commentLines = addedLines.filter(line =>
+                /^\+\s*(\/\/|\/\*|\*|#)/.test(line)
+              ).length;
 
               if (commentLines > 15) {
                 suspiciousScore += 2;
