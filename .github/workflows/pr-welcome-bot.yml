@@ -48,15 +48,27 @@ jobs:
               (pr.labels || [])
                 .map(l => l.name.toLowerCase());
 
-            const isGssoc =
+             const hasGssocSignal =
               existingLabels.includes('gssoc26') ||
-              branch.includes('gssoc') ||
-              body.includes('gssoc');
+              /\bgssoc\b/.test(branch) ||
+              /\bgssoc\b/.test(body);
 
-            const isNsoc =
+            const hasNsocSignal =
               existingLabels.includes('nsoc26') ||
-              branch.includes('nsoc') ||
-              body.includes('nsoc');
+              /\bnsoc\b/.test(branch) ||
+              /\bnsoc\b/.test(body);
+
+            // Precedence: explicit labels > text signals; choose exactly one route.
+            const route =
+              existingLabels.includes('gssoc26') ? 'gssoc' :
+              existingLabels.includes('nsoc26') ? 'nsoc' :
+              hasGssocSignal && !hasNsocSignal ? 'gssoc' :
+              hasNsocSignal && !hasGssocSignal ? 'nsoc' :
+              'standard';
+
+            const isGssoc = route === 'gssoc';
+            const isNsoc = route === 'nsoc';
+            const labelsToAdd = [];
 
             // --------------------------------------------------
             // IDEMPOTENCY
@@ -188,14 +200,8 @@ jobs:
 
             const labelsToAdd = [];
 
-            if (isGssoc) {
-              labelsToAdd.push('gssoc-review');
-            }
-
-            if (isNsoc) {
-              labelsToAdd.push('nsoc-review');
-            }
-
+            if (isGssoc) labelsToAdd.push('gssoc-review');
+            else if (isNsoc) labelsToAdd.push('nsoc-review');
             if (labelsToAdd.length > 0) {
 
               try {
